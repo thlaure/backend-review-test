@@ -1,8 +1,7 @@
-FROM php:7.4-fpm-alpine3.13
+FROM php:8.1-fpm-alpine
 
 # Install composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-COPY --from=symfonycorp/cli /symfony /usr/bin/symfony
 
 # Creating docker user
 RUN addgroup -g 1000 docker && \
@@ -28,6 +27,11 @@ RUN apk add --no-cache make
 # Install php extensions
 RUN apk add --no-cache postgresql-dev bash \
     && docker-php-ext-install -j$(nproc) pdo_pgsql
+
+# Installing Symfony CLI
+RUN apk add --no-cache bash && \
+    curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.alpine.sh' | bash && \
+    apk add symfony-cli
 
 USER docker:docker
 
