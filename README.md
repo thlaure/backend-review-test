@@ -35,7 +35,6 @@ Feel free to adapt the code with your own standards, quality requirements and se
 * Create a fork of this project
 * **Must have**: Create a dedicated PR targeted on your forked project for the command  (**IMPORTANT**: PR should be targeted on YOUR forked repo and NOT our)
 * **Nice to have**: Create a dedicated refactoring PR targeted on your forked project  (**IMPORTANT**: PR should be targeted on YOUR forked repo and NOT our)
-* Share your project with the Yousign team
 
 Your PR will be reviewed during our technical interview, and it will be a support to talk about your choices.
 
