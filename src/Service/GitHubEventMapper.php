@@ -2,35 +2,37 @@
 
 namespace App\Service;
 
-use App\Dto\ActorData;
-use App\Dto\EventData;
-use App\Dto\RepoData;
+use App\Entity\Actor;
+use App\Entity\Event;
+use App\Entity\EventType;
+use App\Entity\Repo;
+use DateTimeImmutable;
 
 class GitHubEventMapper
 {
-    public function map(array $data): EventData
+    public function map(array $data): Event
     {
-        $actorData = new ActorData(
+        $actor = new Actor(
             $data['actor']['id'],
             $data['actor']['login'],
             $data['actor']['url'],
             $data['actor']['avatar_url']
         );
 
-        $repoData = new RepoData(
+        $repo = new Repo(
             $data['repo']['id'],
             $data['repo']['name'],
             $data['repo']['url']
         );
 
-        return new EventData(
+        return new Event(
             $data['id'],
-            $data['type'],
-            $data['public'],
-            $data['payload']['action'] ?? '',
-            $actorData,
-            $repoData,
-            new \DateTime($data['created_at'])
+            EventType::EVENT_MAPPING[$data['type']],
+            $actor,
+            $repo,
+            $data['payload'] ?? [],
+            DateTimeImmutable::createFromFormat(DATE_W3C, $data['created_at']),
+            $data['comment'] ?? null
         );
     }
 }
