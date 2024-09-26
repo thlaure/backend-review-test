@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Service\GitHubEventMapper;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -26,7 +27,8 @@ class ImportGitHubEventsCommand extends Command
 {
     public function __construct(
         private HttpClientInterface $httpClient,
-        private Filesystem $filesystem
+        private Filesystem $filesystem,
+        private GitHubEventMapper $githubEventMapper
     ) {
         parent::__construct();
     }
@@ -88,7 +90,13 @@ class ImportGitHubEventsCommand extends Command
 
                 while (false !== ($line = fgets($file))) {
                     $data = json_decode($line, true);
-                    $io->info($data['type']);
+
+                    if (null === $data) {
+                        continue;
+                    }
+
+                    $eventData = $this->githubEventMapper->map($data);
+                    $io->info('Importing '.$eventData->id. ' - ' . $eventData->type.' - ' . $eventData->payloadAction.' - ' . $eventData->actor->login.' - ' . $eventData->repo->name.' - ' . $eventData->createdAt->format('Y-m-d H:i:s'));
                 }
             
                 $this->filesystem->remove($tempName);
