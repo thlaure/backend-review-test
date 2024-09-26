@@ -11,6 +11,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -39,8 +40,6 @@ class ImportGitHubEventsCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        // Let's rock !
-        // It's up to you now
         $io = new SymfonyStyle($input, $output);
 
         $io->title('Import GitHub events');
@@ -61,40 +60,45 @@ class ImportGitHubEventsCommand extends Command
 
         $io->info('Importing events for ' . $date);
 
-        $url = sprintf('http://data.gharchive.org/%s-12.json.gz', $date);
-        $output->writeln('Fetching GitHub events from '.$url);
+        for ($hour = 0; $hour < 24; ++$hour) {
+            $url = sprintf('http://data.gharchive.org/%s-%s.json.gz', $date, $hour);
+            $output->writeln('Fetching GitHub events from '.$url);
 
-        try {
-            $response = $this->httpClient->request('GET', $url);
+            try {
+                $response = $this->httpClient->request('GET', $url);
 
-            if (200 !== $response->getStatusCode()) {
-                $io->error('Failed to fetch GitHub events');
+                if (Response::HTTP_OK !== $response->getStatusCode()) {
+                    $io->error('Failed to fetch GitHub events');
+
+                    return Command::FAILURE;
+                }
+
+                $content = gzdecode($response->getContent());
+
+                $filename = 'events_'.$date.'_'.$hour.'.json';
+                $tempName = $this->filesystem->tempnam(sys_get_temp_dir(), $filename);
+                $this->filesystem->dumpFile($tempName, $content);
+
+                $file = fopen($tempName, 'r');
+                if (!$file) {
+                    $io->error('Failed to open '.$filename);
+
+                    return Command::FAILURE;
+                }
+
+                while (false !== ($line = fgets($file))) {
+                    $data = json_decode($line, true);
+                    $io->info($data['type']);
+                }
+            
+                $this->filesystem->remove($tempName);
+                fclose($file);
+            }
+            catch (\Exception $e) {
+                $io->error($e->getMessage());
 
                 return Command::FAILURE;
             }
-
-            $content = gzdecode($response->getContent());
-            $filename = 'docker/imports/events_'.$date.'.json';
-            $io->info('Saving events to '.$filename);
-            $this->filesystem->dumpFile($filename, $content);
-
-            $file = fopen($filename, 'r');
-            if (!$file) {
-                $io->error('Failed to open '.$filename);
-
-                return Command::FAILURE;
-            }
-
-            while (($line = fgets($file)) !== false) {
-                $data = json_decode($line, true);
-                $io->info($data['type']);
-            }
-        
-            fclose($file);
-        } catch (\Exception $e) {
-            $io->error($e->getMessage());
-
-            return Command::FAILURE;
         }
 
         $io->success('Events imported');
