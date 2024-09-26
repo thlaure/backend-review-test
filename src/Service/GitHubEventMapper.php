@@ -12,18 +12,21 @@ class GitHubEventMapper
 {
     public function map(array $data): Event
     {
-        $actor = new Actor(
-            $data['actor']['id'],
-            $data['actor']['login'],
-            $data['actor']['url'],
-            $data['actor']['avatar_url']
-        );
+        if (!isset($data['actor']) || !isset($data['actor']['id']) || !isset($data['actor']['login']) || !isset($data['actor']['url']) || !isset($data['actor']['avatar_url'])) {
+            throw new \InvalidArgumentException('Invalid actor data');
+        }
 
-        $repo = new Repo(
-            $data['repo']['id'],
-            $data['repo']['name'],
-            $data['repo']['url']
-        );
+        $actor = Actor::fromArray($data['actor']);
+
+        if (!isset($data['repo']) || !isset($data['repo']['id']) || !isset($data['repo']['name']) || !isset($data['repo']['url'])) {
+            throw new \InvalidArgumentException('Invalid repo data');
+        }
+
+        $repo = Repo::fromArray($data['repo']);
+
+        if (!isset($data['type']) || !array_key_exists($data['type'], EventType::EVENT_MAPPING)) {
+            throw new \InvalidArgumentException('Invalid event type');
+        }
 
         return new Event(
             $data['id'],
