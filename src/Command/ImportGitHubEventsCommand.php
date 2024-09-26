@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Service\GitHubEventMapper;
+use App\Service\FileHandler;
+use App\Service\GitHubDataFetcher;
+use App\Service\GitHubEventProcessor;
+use App\Service\InputValidator;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * This command must import GitHub events.
@@ -26,9 +27,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class ImportGitHubEventsCommand extends Command
 {
     public function __construct(
-        private HttpClientInterface $httpClient,
-        private Filesystem $filesystem,
-        private GitHubEventMapper $githubEventMapper
+        private InputValidator $validator,
+        private GitHubDataFetcher $dataFetcher,
+        private FileHandler $fileHandler,
+        private GitHubEventProcessor $eventProcessor
     ) {
         parent::__construct();
     }
@@ -43,66 +45,28 @@ class ImportGitHubEventsCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-
         $io->title('Import GitHub events');
 
         $date = $input->getOption('date');
-        if (!\DateTime::createFromFormat('Y-m-d', $date)) {
-            $io->error('Date format must be YYYY-MM-DD');
+
+        if (!$this->validator->validateDate($date)) {
+            $io->error('Invalid date format or future date.');
 
             return Command::FAILURE;
         }
 
-        $today = new \DateTime();
-        if ($date > $today->format('Y-m-d')) {
-            $io->error('Date must be in the past');
-
-            return Command::FAILURE;
-        }
-
-        $io->info('Importing events for ' . $date);
+        $io->info('Importing events for '.$date);
 
         for ($hour = 0; $hour < 24; ++$hour) {
             $url = sprintf('http://data.gharchive.org/%s-%s.json.gz', $date, $hour);
-            $output->writeln('Fetching GitHub events from '.$url);
+            $io->writeln('Fetching GitHub events from '.$url);
 
             try {
-                $response = $this->httpClient->request('GET', $url);
-
-                if (Response::HTTP_OK !== $response->getStatusCode()) {
-                    $io->error('Failed to fetch GitHub events');
-
-                    return Command::FAILURE;
-                }
-
-                $content = gzdecode($response->getContent());
-
-                $filename = 'events_'.$date.'_'.$hour.'.json';
-                $tempName = $this->filesystem->tempnam(sys_get_temp_dir(), $filename);
-                $this->filesystem->dumpFile($tempName, $content);
-
-                $file = fopen($tempName, 'r');
-                if (!$file) {
-                    $io->error('Failed to open '.$filename);
-
-                    return Command::FAILURE;
-                }
-
-                while (false !== ($line = fgets($file))) {
-                    $data = json_decode($line, true);
-
-                    if (null === $data) {
-                        continue;
-                    }
-
-                    $eventData = $this->githubEventMapper->map($data);
-                    $io->info('Importing '.$eventData->id. ' - ' . $eventData->type.' - ' . $eventData->payloadAction.' - ' . $eventData->actor->login.' - ' . $eventData->repo->name.' - ' . $eventData->createdAt->format('Y-m-d H:i:s'));
-                }
-            
-                $this->filesystem->remove($tempName);
-                fclose($file);
-            }
-            catch (\Exception $e) {
+                $content = $this->dataFetcher->fetchEvents($url);
+                $filePath = $this->fileHandler->dump("events_$date-$hour.json", $content);
+                $this->eventProcessor->processFile($filePath);
+                $this->fileHandler->remove($filePath);
+            } catch (\Exception $e) {
                 $io->error($e->getMessage());
 
                 return Command::FAILURE;

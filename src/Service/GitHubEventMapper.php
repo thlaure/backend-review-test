@@ -23,7 +23,7 @@ class GitHubEventMapper
             $data['repo']['url']
         );
 
-        $eventData = new EventData(
+        return new EventData(
             $data['id'],
             $data['type'],
             $data['public'],
@@ -32,7 +32,5 @@ class GitHubEventMapper
             $repoData,
             new \DateTime($data['created_at'])
         );
-
-        return $eventData;
     }
 }
