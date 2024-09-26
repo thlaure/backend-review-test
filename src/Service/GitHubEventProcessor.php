@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\EventType;
 use App\Service\GitHubEventMapper;
 
 class GitHubEventProcessor
@@ -20,7 +21,7 @@ class GitHubEventProcessor
 
         while (false !== ($line = fgets($file))) {
             $data = json_decode($line, true);
-            if (null === $data) {
+            if (null === $data || !isset($data['type']) || !array_key_exists($data['type'], EventType::EVENT_MAPPING)) {
                 continue;
             }
 
