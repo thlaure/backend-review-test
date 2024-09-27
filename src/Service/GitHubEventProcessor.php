@@ -3,12 +3,14 @@
 namespace App\Service;
 
 use App\Entity\EventType;
+use App\Repository\DbalWriteEventRepository;
 use App\Service\GitHubEventMapper;
 
 class GitHubEventProcessor
 {
     public function __construct(
-        private GitHubEventMapper $mapper
+        private GitHubEventMapper $mapper,
+        private DbalWriteEventRepository $eventRepository
     ) {
     }
 
@@ -26,6 +28,8 @@ class GitHubEventProcessor
             }
 
             $event = $this->mapper->map($data);
+
+            $this->eventRepository->insert($event);
         }
 
         fclose($file);
