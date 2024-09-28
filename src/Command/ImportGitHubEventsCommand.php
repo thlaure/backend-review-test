@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Message\GitHubEventMessage;
 use App\Service\FileHandler;
 use App\Service\GitHubDataFetcher;
 use App\Service\GitHubEventProcessor;
@@ -14,6 +15,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * This command must import GitHub events.
@@ -29,7 +31,9 @@ class ImportGitHubEventsCommand extends Command
         private InputValidator $validator,
         private GitHubDataFetcher $dataFetcher,
         private FileHandler $fileHandler,
-        private GitHubEventProcessor $eventProcessor
+        private GitHubEventProcessor $eventProcessor,
+        private MessageBusInterface $messageBus,
+        private int $batchSize = 200
     ) {
         parent::__construct();
     }
@@ -61,10 +65,27 @@ class ImportGitHubEventsCommand extends Command
             $io->writeln('Fetching GitHub events from '.$url);
 
             try {
-                $content = $this->dataFetcher->fetchEvents($url);
-                $filePath = $this->fileHandler->dump("events_$date-$hour.json", $content);
-                $this->eventProcessor->processFile($filePath);
-                $this->fileHandler->remove($filePath);
+                foreach ($this->dataFetcher->fetchEvents($url) as $line) {
+                    $data = json_decode($line, true);
+
+                    if (null === $data) {
+                        continue;
+                    }
+                
+                    $batch[] = $data;
+                    if ($this->batchSize <= count($batch)) {
+                        foreach ($batch as $event) {
+                            $this->messageBus->dispatch(new GitHubEventMessage($event));
+                        }
+                        $batch = [];
+                    }
+                }
+                
+                if (!empty($batch)) {
+                    foreach ($batch as $event) {
+                        $this->messageBus->dispatch(new GitHubEventMessage($event));
+                    }
+                }
             } catch (\Exception $e) {
                 $io->error($e->getMessage());
 
@@ -72,7 +93,7 @@ class ImportGitHubEventsCommand extends Command
             }
         }
 
-        $io->success('Events imported');
+        $io->success('Events dispatched');
 
         return Command::SUCCESS;
     }

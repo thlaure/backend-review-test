@@ -14,24 +14,13 @@ class GitHubEventProcessor
     ) {
     }
 
-    public function processFile(string $filePath): void
+    public function processEvent(array $eventData): void
     {
-        $file = fopen($filePath, 'r');
-        if (!$file) {
-            throw new \Exception('Failed to open file');
+        if (!isset($eventData['type']) || !array_key_exists($eventData['type'], EventType::EVENT_MAPPING)) {
+            return;
         }
 
-        while (false !== ($line = fgets($file))) {
-            $data = json_decode($line, true);
-            if (null === $data || !isset($data['type']) || !array_key_exists($data['type'], EventType::EVENT_MAPPING)) {
-                continue;
-            }
-
-            $event = $this->mapper->map($data);
-
-            $this->eventRepository->insert($event);
-        }
-
-        fclose($file);
+        $event = $this->mapper->map($eventData);
+        $this->eventRepository->insert($event);
     }
 }
