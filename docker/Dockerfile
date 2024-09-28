@@ -25,8 +25,11 @@ RUN \
 RUN apk add --no-cache make
 
 # Install php extensions
-RUN apk add --no-cache postgresql-dev bash \
+RUN apk add --no-cache postgresql-dev autoconf gcc g++ bash rabbitmq-c-dev libtool \
     && docker-php-ext-install -j$(nproc) pdo_pgsql
+
+# Install AMQP
+RUN pecl install amqp && docker-php-ext-enable amqp
 
 # Installing Symfony CLI
 RUN apk add --no-cache bash && \
