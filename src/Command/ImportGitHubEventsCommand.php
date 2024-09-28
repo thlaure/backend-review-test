@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Message\GitHubEventMessage;
-use App\Service\FileHandler;
-use App\Service\GitHubDataFetcher;
-use App\Service\GitHubEventProcessor;
+use App\Entity\EventType;
+use App\Message\DataEventsMessage;
 use App\Service\InputValidator;
+use SplFileObject;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * This command must import GitHub events.
@@ -29,11 +31,10 @@ class ImportGitHubEventsCommand extends Command
 {
     public function __construct(
         private InputValidator $validator,
-        private GitHubDataFetcher $dataFetcher,
-        private FileHandler $fileHandler,
-        private GitHubEventProcessor $eventProcessor,
         private MessageBusInterface $messageBus,
-        private int $batchSize = 200
+        private Filesystem $filesystem,
+        private HttpClientInterface $httpClient,
+        private int $batchSize
     ) {
         parent::__construct();
     }
@@ -42,7 +43,7 @@ class ImportGitHubEventsCommand extends Command
     {
         $this
             ->setDescription('Import GH events')
-            ->addOption('date', null, InputOption::VALUE_REQUIRED, 'Date to import events for (format: YYYY-MM-DD)', date('Y-m-d'));
+            ->addOption('date', null, InputOption::VALUE_REQUIRED, 'Date to import events for (format: YYYY-MM-DD)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -65,27 +66,32 @@ class ImportGitHubEventsCommand extends Command
             $io->writeln('Fetching GitHub events from '.$url);
 
             try {
-                foreach ($this->dataFetcher->fetchEvents($url) as $line) {
-                    $data = json_decode($line, true);
+                $response = $this->httpClient->request(Request::METHOD_GET, $url);
 
-                    if (null === $data) {
+                $filename = $this->filesystem->tempnam(sys_get_temp_dir(), 'events_'.$date.'_'.$hour);
+                foreach ($this->httpClient->stream($response) as $chunk) {
+                    $this->filesystem->appendToFile($filename, $chunk->getContent());
+                }
+
+                $dataEvents = new DataEventsMessage();
+                foreach ($this->readFile($filename) as $index => $line) {
+                    $eventData = json_decode($line, true);
+                    if (!is_array($eventData) || !array_key_exists('type', $eventData) || !array_key_exists($eventData['type'], EventType::EVENT_MAPPING)) {
                         continue;
                     }
-                
-                    $batch[] = $data;
-                    if ($this->batchSize <= count($batch)) {
-                        foreach ($batch as $event) {
-                            $this->messageBus->dispatch(new GitHubEventMessage($event));
-                        }
-                        $batch = [];
+
+                    $dataEvents->addEventData($eventData);
+
+                    if (($index + 1) % $this->batchSize === 0) {
+                        $this->messageBus->dispatch($dataEvents);
                     }
                 }
-                
-                if (!empty($batch)) {
-                    foreach ($batch as $event) {
-                        $this->messageBus->dispatch(new GitHubEventMessage($event));
-                    }
+
+                if (!empty($dataEvents->getEventsData())) {
+                    $this->messageBus->dispatch($dataEvents);
                 }
+
+                $this->filesystem->remove($filename);
             } catch (\Exception $e) {
                 $io->error($e->getMessage());
 
@@ -96,5 +102,15 @@ class ImportGitHubEventsCommand extends Command
         $io->success('Events dispatched');
 
         return Command::SUCCESS;
+    }
+
+    protected function readFile(string $filename): iterable
+    {
+        $file = new SplFileObject(sprintf('compress.zlib:///%s', $filename));
+        $file->setFlags(SplFileObject::DROP_NEW_LINE | \SplFileObject::SKIP_EMPTY);
+
+        foreach ($file as $line) {
+            yield $line;
+        }
     }
 }
