@@ -6,9 +6,9 @@ use App\Dto\EventInput;
 use App\Repository\ReadEventRepository;
 use App\Repository\WriteEventRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -21,16 +21,14 @@ class EventController
     public function __construct(
         WriteEventRepository $writeEventRepository,
         ReadEventRepository $readEventRepository,
-        SerializerInterface $serializer
+        SerializerInterface $serializer,
     ) {
         $this->writeEventRepository = $writeEventRepository;
         $this->readEventRepository = $readEventRepository;
         $this->serializer = $serializer;
     }
 
-    /**
-     * @Route(path="/api/event/{id}/update", name="api_commit_update", methods={"PUT"})
-     */
+    #[Route(path: '/api/event/{id}/update', name: 'api_commit_update', methods: ['PUT'])]
     public function update(Request $request, int $id, ValidatorInterface $validator): Response
     {
         $eventInput = $this->serializer->deserialize($request->getContent(), EventInput::class, 'json');
@@ -44,7 +42,7 @@ class EventController
             );
         }
 
-        if($this->readEventRepository->exist($id) === false) {
+        if (false === $this->readEventRepository->exist($id)) {
             return new JsonResponse(
                 ['message' => sprintf('Event identified by %d not found !', $id)],
                 Response::HTTP_NOT_FOUND
