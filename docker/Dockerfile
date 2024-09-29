@@ -28,6 +28,10 @@ RUN apk add --no-cache make
 RUN apk add --no-cache postgresql-dev autoconf gcc g++ bash rabbitmq-c-dev libtool \
     && docker-php-ext-install -j$(nproc) pdo_pgsql
 
+# Install supervisor
+RUN apk add --no-cache supervisor
+COPY supervisord.conf /etc/supervisord.conf
+
 # Install AMQP
 RUN pecl install amqp && docker-php-ext-enable amqp
 

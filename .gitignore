@@ -19,3 +19,4 @@
 ###< phpunit/phpunit ###
 
 .idea
+supervisord.pid
