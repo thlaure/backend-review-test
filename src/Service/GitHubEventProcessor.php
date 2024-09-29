@@ -18,9 +18,7 @@ class GitHubEventProcessor
     public function processEvents(string $filename): void
     {
         $dataEvents = new DataEventsMessage();
-        $index = 0;
-
-        foreach ($this->fileHandler->read($filename) as $line) {
+        foreach ($this->fileHandler->read($filename) as $index => $line) {
             $eventData = json_decode($line, true);
             if (!is_array($eventData) || !isset(EventType::EVENT_MAPPING[$eventData['type']])) {
                 continue;
