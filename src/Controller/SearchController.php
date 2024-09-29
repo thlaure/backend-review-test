@@ -4,45 +4,33 @@ namespace App\Controller;
 
 use App\Dto\SearchInput;
 use App\Repository\ReadEventRepository;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Attribute\MapQueryString;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Serializer\SerializerInterface;
 
 class SearchController
 {
-    private ReadEventRepository $repository;
-    private SerializerInterface $serializer;
-
     public function __construct(
-        ReadEventRepository $repository,
-        SerializerInterface  $serializer
+        private ReadEventRepository $readEventRepository,
     ) {
-        $this->repository = $repository;
-        $this->serializer = $serializer;
     }
 
-    /**
-     * @Route(path="/api/search", name="api_search", methods={"GET"})
-     */
-    public function searchCommits(Request $request): JsonResponse
+    #[Route(path: '/api/search', name: 'api_search', methods: ['GET'])]
+    public function searchCommits(#[MapQueryString] SearchInput $searchInput): JsonResponse
     {
-        $searchInput = $this->serializer->denormalize($request->query->all(), SearchInput::class);
-
-        $countByType = $this->repository->countByType($searchInput);
+        $countByType = $this->readEventRepository->countByType($searchInput);
 
         $data = [
             'meta' => [
-                'totalEvents' => $this->repository->countAll($searchInput),
+                'totalEvents' => $this->readEventRepository->countAll($searchInput),
                 'totalPullRequests' => $countByType['pullRequest'] ?? 0,
                 'totalCommits' => $countByType['commit'] ?? 0,
                 'totalComments' => $countByType['comment'] ?? 0,
             ],
             'data' => [
-                'events' => $this->repository->getLatest($searchInput),
-                'stats' => $this->repository->statsByTypePerHour($searchInput)
-            ]
+                'events' => $this->readEventRepository->getLatest($searchInput),
+                'stats' => $this->readEventRepository->statsByTypePerHour($searchInput),
+            ],
         ];
 
         return new JsonResponse($data);

@@ -3,11 +3,12 @@
 namespace App\Tests\Func;
 
 use App\DataFixtures\EventFixtures;
-use App\Entity\Event;
 use Doctrine\ORM\Tools\SchemaTool;
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Liip\TestFixturesBundle\Services\DatabaseToolCollection;
 use Liip\TestFixturesBundle\Services\DatabaseTools\AbstractDatabaseTool;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class EventControllerTest extends WebTestCase
 {
@@ -35,7 +36,7 @@ class EventControllerTest extends WebTestCase
         $client = static::$client;
 
         $client->request(
-            'PUT',
+            Request::METHOD_PUT,
             sprintf('/api/event/%d/update', EventFixtures::EVENT_1_ID),
             [],
             [],
@@ -43,16 +44,15 @@ class EventControllerTest extends WebTestCase
             json_encode(['comment' => 'It‘s a test comment !!!!!!!!!!!!!!!!!!!!!!!!!!!'])
         );
 
-        $this->assertResponseStatusCodeSame(204);
+        $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
-
 
     public function testUpdateShouldReturnHttpNotFoundResponse()
     {
         $client = static::$client;
 
         $client->request(
-            'PUT',
+            Request::METHOD_PUT,
             sprintf('/api/event/%d/update', 7897897897),
             [],
             [],
@@ -60,7 +60,7 @@ class EventControllerTest extends WebTestCase
             json_encode(['comment' => 'It‘s a test comment !!!!!!!!!!!!!!!!!!!!!!!!!!!'])
         );
 
-        $this->assertResponseStatusCodeSame(404);
+        $this->assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 
         $expectedJson = <<<JSON
               {
@@ -79,7 +79,7 @@ class EventControllerTest extends WebTestCase
         $client = static::$client;
 
         $client->request(
-            'PUT',
+            Request::METHOD_PUT,
             sprintf('/api/event/%d/update', EventFixtures::EVENT_1_ID),
             [],
             [],
@@ -87,9 +87,8 @@ class EventControllerTest extends WebTestCase
             $payload
         );
 
-        self::assertResponseStatusCodeSame(400);
+        self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
         self::assertJsonStringEqualsJsonString($expectedResponse, $client->getResponse()->getContent());
-
     }
 
     public function providePayloadViolations(): iterable
@@ -105,7 +104,7 @@ class EventControllerTest extends WebTestCase
                 {
                     "message": "This value is too short. It should have 20 characters or more."
                 }
-            JSON
+            JSON,
         ];
     }
 }

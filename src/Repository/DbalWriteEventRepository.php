@@ -3,17 +3,13 @@
 namespace App\Repository;
 
 use App\Dto\EventInput;
-use App\Dto\SearchInput;
 use Doctrine\DBAL\Connection;
-use phpDocumentor\Reflection\DocBlock\Tags\Author;
 
 class DbalWriteEventRepository implements WriteEventRepository
 {
-    private Connection $connection;
-
-    public function __construct(Connection $connection)
-    {
-        $this->connection = $connection;
+    public function __construct(
+        private Connection $connection,
+    ) {
     }
 
     public function update(EventInput $authorInput, int $id): void
