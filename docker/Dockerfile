@@ -25,8 +25,15 @@ RUN \
 RUN apk add --no-cache make
 
 # Install php extensions
-RUN apk add --no-cache postgresql-dev bash \
+RUN apk add --no-cache postgresql-dev autoconf gcc g++ bash rabbitmq-c-dev libtool \
     && docker-php-ext-install -j$(nproc) pdo_pgsql
+
+# Install supervisor
+RUN apk add --no-cache supervisor
+COPY supervisord.conf /etc/supervisord.conf
+
+# Install AMQP
+RUN pecl install amqp && docker-php-ext-enable amqp
 
 # Installing Symfony CLI
 RUN apk add --no-cache bash && \
@@ -38,4 +45,4 @@ USER docker:docker
 EXPOSE 8000
 WORKDIR /app
 ENTRYPOINT ["fixuid", "-q"]
-CMD ["symfony", "server:start", "--port=8000"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

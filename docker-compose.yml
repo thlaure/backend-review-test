@@ -12,6 +12,7 @@ services:
       COMPOSER_HOME: /tmp/composer
     depends_on:
       - database
+      - rabbitmq
 
   database:
     image: postgres:14-alpine
@@ -37,3 +38,14 @@ services:
       - "database:db"
     ports:
       - "8888:8080"
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  rabbitmq_data:
