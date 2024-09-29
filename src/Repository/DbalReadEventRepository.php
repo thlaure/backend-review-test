@@ -21,10 +21,16 @@ class DbalReadEventRepository implements ReadEventRepository
         AND payload::text like :keyword
 SQL;
 
-        return (int) $this->connection->fetchOne($sql, [
+        $result = $this->connection->fetchOne($sql, [
             'date' => $searchInput->date->format('Y-m-d'),
             'keyword' => "%{$searchInput->keyword}%",
         ]);
+
+        if (!is_int($result)) {
+            throw new \Exception('Invalid result');
+        }
+
+        return (int) $result;
     }
 
     public function countByType(SearchInput $searchInput): array
@@ -87,5 +93,20 @@ SQL;
 
             return $item;
         }, $result);
+    }
+
+    public function exist(int $id): bool
+    {
+        $sql = <<<SQL
+            SELECT 1
+            FROM event
+            WHERE id = :id
+        SQL;
+
+        $result = $this->connection->fetchOne($sql, [
+            'id' => $id
+        ]);
+
+        return (bool) $result;
     }
 }
