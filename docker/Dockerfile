@@ -1,4 +1,4 @@
-FROM php:8.1-fpm-alpine
+FROM php:8.3-fpm-alpine
 
 # Install composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -21,16 +21,12 @@ RUN \
     wget -O /usr/local/bin/waitforit https://github.com/maxcnunes/waitforit/releases/download/v2.4.1/waitforit-linux_amd64 && \
     chmod +x /usr/local/bin/waitforit
 
-# Install make
-RUN apk add --no-cache make
-
-# Install php extensions
-RUN apk add --no-cache postgresql-dev bash \
+# Install extensions
+RUN apk add --no-cache postgresql-dev bash make \
     && docker-php-ext-install -j$(nproc) pdo_pgsql
 
 # Installing Symfony CLI
-RUN apk add --no-cache bash && \
-    curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.alpine.sh' | bash && \
+RUN curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.alpine.sh' | bash && \
     apk add symfony-cli
 
 USER docker:docker
