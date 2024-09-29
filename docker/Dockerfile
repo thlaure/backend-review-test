@@ -45,4 +45,4 @@ USER docker:docker
 EXPOSE 8000
 WORKDIR /app
 ENTRYPOINT ["fixuid", "-q"]
-CMD ["symfony", "server:start", "--port=8000"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
