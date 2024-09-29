@@ -5,7 +5,7 @@ namespace App\Controller;
 use App\Dto\SearchInput;
 use App\Repository\ReadEventRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Attribute\MapQueryString;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 
@@ -18,10 +18,8 @@ class SearchController
     }
 
     #[Route(path: '/api/search', name: 'api_search', methods: ['GET'])]
-    public function searchCommits(Request $request): JsonResponse
+    public function searchCommits(#[MapQueryString] SearchInput $searchInput): JsonResponse
     {
-        $searchInput = $this->serializer->denormalize($request->query->all(), SearchInput::class);
-
         $countByType = $this->readEventRepository->countByType($searchInput);
 
         $data = [
