@@ -3,24 +3,39 @@
 namespace App\Service;
 
 use App\Entity\EventType;
-use App\Repository\DbalWriteEventRepository;
-use App\Service\GitHubEventMapper;
+use App\Message\DataEventsMessage;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 class GitHubEventProcessor
 {
     public function __construct(
-        private GitHubEventMapper $mapper,
-        private DbalWriteEventRepository $eventRepository
+        private FileHandler $fileHandler,
+        private MessageBusInterface $messageBus,
+        private int $batchSize
     ) {
     }
 
-    public function processEvent(array $eventData): void
+    public function processEvents(string $filename): void
     {
-        if (!isset($eventData['type']) || !array_key_exists($eventData['type'], EventType::EVENT_MAPPING)) {
-            return;
+        $dataEvents = new DataEventsMessage();
+        $index = 0;
+
+        foreach ($this->fileHandler->read($filename) as $line) {
+            $eventData = json_decode($line, true);
+            if (!is_array($eventData) || !isset(EventType::EVENT_MAPPING[$eventData['type']])) {
+                continue;
+            }
+
+            $dataEvents->addEventData($eventData);
+
+            if ($index++ % $this->batchSize === 0) {
+                $this->messageBus->dispatch($dataEvents);
+                $dataEvents = new DataEventsMessage();
+            }
         }
 
-        $event = $this->mapper->map($eventData);
-        $this->eventRepository->insert($event);
+        if (!empty($dataEvents->getEventsData())) {
+            $this->messageBus->dispatch($dataEvents);
+        }
     }
 }

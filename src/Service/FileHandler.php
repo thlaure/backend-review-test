@@ -11,12 +11,9 @@ class FileHandler
     ) {
     }
 
-    public function dump(string $path, string $content): string
+    public function write(string $filename, string $content): void
     {
-        $tempName = $this->filesystem->tempnam(sys_get_temp_dir(), $path);
-        $this->filesystem->dumpFile($tempName, $content);
-
-        return $tempName;
+        $this->filesystem->appendToFile($filename, $content);
     }
 
     public function remove(string $filePath): void

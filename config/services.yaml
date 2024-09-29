@@ -32,6 +32,6 @@ services:
         arguments:
             $batchSize: '%batch_size%'
 
-    App\Command\ImportGitHubEventsCommand:
+    App\Service\GitHubEventProcessor:
         arguments:
             $batchSize: '%batch_size%'
