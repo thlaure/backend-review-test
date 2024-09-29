@@ -13,6 +13,4 @@ interface ReadEventRepository
     public function statsByTypePerHour(SearchInput $searchInput): array;
 
     public function getLatest(SearchInput $searchInput): array;
-
-    public function exist(int $id): bool;
 }
