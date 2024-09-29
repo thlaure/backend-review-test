@@ -2,23 +2,25 @@
 
 namespace App\Service;
 
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class GitHubDataFetcher
 {
     public function __construct(
-        private HttpClientInterface $httpClient,
-        private Filesystem $filesystem
+        private HttpClientInterface $httpClient
     ) {
     }
 
     public function fetchEvents(string $url): iterable
     {
-        $response = $this->httpClient->request(Request::METHOD_GET, $url);
-        foreach ($this->httpClient->stream($response) as $chunk) {
-            yield $chunk->getContent();
+        try {
+            $response = $this->httpClient->request(Request::METHOD_GET, $url);
+            foreach ($this->httpClient->stream($response) as $chunk) {
+                yield $chunk->getContent();
+            }
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage());
         }
     }
 }
