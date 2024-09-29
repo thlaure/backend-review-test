@@ -23,4 +23,14 @@ class FileHandler
     {
         $this->filesystem->remove($filePath);
     }
+
+    public function read(string $filename): iterable
+    {
+        $file = new \SplFileObject(sprintf('compress.zlib:///%s', $filename));
+        $file->setFlags(\SplFileObject::DROP_NEW_LINE | \SplFileObject::SKIP_EMPTY);
+
+        foreach ($file as $line) {
+            yield $line;
+        }
+    }
 }

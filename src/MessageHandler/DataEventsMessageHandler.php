@@ -33,11 +33,14 @@ class DataEventsMessageHandler implements MessageHandlerInterface
 
             if (($index + 1) % $this->batchSize === 0) {
                 $this->messageBus->dispatch($mappedEvents);
+                $mappedEvents = new MappedEventsMessage();
             }
         }
 
         if (!empty($mappedEvents->getMappedEvents())) {
             $this->messageBus->dispatch($mappedEvents);
         }
+
+        unset($mappedEvents);
     }
 }

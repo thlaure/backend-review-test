@@ -6,8 +6,8 @@ namespace App\Command;
 
 use App\Entity\EventType;
 use App\Message\DataEventsMessage;
+use App\Service\FileHandler;
 use App\Service\InputValidator;
-use SplFileObject;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -34,6 +34,7 @@ class ImportGitHubEventsCommand extends Command
         private MessageBusInterface $messageBus,
         private Filesystem $filesystem,
         private HttpClientInterface $httpClient,
+        private FileHandler $fileHandler,
         private int $batchSize
     ) {
         parent::__construct();
@@ -74,7 +75,7 @@ class ImportGitHubEventsCommand extends Command
                 }
 
                 $dataEvents = new DataEventsMessage();
-                foreach ($this->readFile($filename) as $index => $line) {
+                foreach ($this->fileHandler->read($filename) as $index => $line) {
                     $eventData = json_decode($line, true);
                     if (!is_array($eventData) || !array_key_exists('type', $eventData) || !array_key_exists($eventData['type'], EventType::EVENT_MAPPING)) {
                         continue;
@@ -84,6 +85,7 @@ class ImportGitHubEventsCommand extends Command
 
                     if (($index + 1) % $this->batchSize === 0) {
                         $this->messageBus->dispatch($dataEvents);
+                        $dataEvents = new DataEventsMessage();
                     }
                 }
 
@@ -102,15 +104,5 @@ class ImportGitHubEventsCommand extends Command
         $io->success('Events dispatched');
 
         return Command::SUCCESS;
-    }
-
-    protected function readFile(string $filename): iterable
-    {
-        $file = new SplFileObject(sprintf('compress.zlib:///%s', $filename));
-        $file->setFlags(SplFileObject::DROP_NEW_LINE | \SplFileObject::SKIP_EMPTY);
-
-        foreach ($file as $line) {
-            yield $line;
-        }
     }
 }
