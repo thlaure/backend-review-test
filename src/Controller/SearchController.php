@@ -7,13 +7,11 @@ use App\Repository\ReadEventRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapQueryString;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Serializer\SerializerInterface;
 
 class SearchController
 {
     public function __construct(
         private ReadEventRepository $readEventRepository,
-        private SerializerInterface $serializer,
     ) {
     }
 

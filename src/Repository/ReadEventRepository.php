@@ -8,6 +8,9 @@ interface ReadEventRepository
 {
     public function countAll(SearchInput $searchInput): int;
 
+    /**
+     * @return array<string|int, mixed>
+     */
     public function countByType(SearchInput $searchInput): array;
 
     public function statsByTypePerHour(SearchInput $searchInput): array;

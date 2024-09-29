@@ -26,8 +26,8 @@ SQL;
             'keyword' => "%{$searchInput->keyword}%",
         ]);
 
-        if (!is_int($result)) {
-            throw new \Exception('Invalid result');
+        if (!is_numeric($result)) {
+            return 0;
         }
 
         return (int) $result;
@@ -67,6 +67,10 @@ SQL;
         $data = array_fill(0, 24, ['commit' => 0, 'pullRequest' => 0, 'comment' => 0]);
 
         foreach ($stats as $stat) {
+            if (!is_numeric($stat['hour'])) {
+                continue;
+            }
+
             $data[(int) $stat['hour']][$stat['type']] = $stat['count'];
         }
 
@@ -89,6 +93,10 @@ SQL;
         ]);
 
         return array_map(static function ($item) {
+            if (!is_string($item['repo'])) {
+                return;
+            }
+
             $item['repo'] = json_decode($item['repo'], true);
 
             return $item;
