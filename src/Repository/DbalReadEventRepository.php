@@ -7,11 +7,9 @@ use Doctrine\DBAL\Connection;
 
 class DbalReadEventRepository implements ReadEventRepository
 {
-    private Connection $connection;
-
-    public function __construct(Connection $connection)
-    {
-        $this->connection = $connection;
+    public function __construct(
+        private Connection $connection,
+    ) {
     }
 
     public function countAll(SearchInput $searchInput): int
@@ -24,22 +22,22 @@ class DbalReadEventRepository implements ReadEventRepository
 SQL;
 
         return (int) $this->connection->fetchOne($sql, [
-            'date' => $searchInput->date,
+            'date' => $searchInput->date->format('Y-m-d'),
         ]);
     }
 
     public function countByType(SearchInput $searchInput): array
     {
-        $sql = <<<'SQL'
+        $sql = <<<SQL
             SELECT type, sum(count) as count
             FROM event
             WHERE date(create_at) = :date
-            AND payload like %{$searchInput->keyword}%
+            AND payload like "%{$searchInput->keyword}%"
             GROUP BY type
 SQL;
 
         return $this->connection->fetchAllKeyValue($sql, [
-            'date' => $searchInput->date,
+            'date' => $searchInput->date->format('Y-m-d'),
         ]);
     }
 
@@ -49,12 +47,12 @@ SQL;
             SELECT extract(hour from create_at) as hour, type, sum(count) as count
             FROM event
             WHERE date(create_at) = :date
-            AND payload like %{$searchInput->keyword}%
+            AND payload like "%{$searchInput->keyword}%"
             GROUP BY TYPE, EXTRACT(hour from create_at)
 SQL;
 
         $stats = $this->connection->fetchAll($sql, [
-            'date' => $searchInput->date,
+            'date' => $searchInput->date->format('Y-m-d'),
         ]);
 
         $data = array_fill(0, 24, ['commit' => 0, 'pullRequest' => 0, 'comment' => 0]);
@@ -76,7 +74,7 @@ SQL;
 SQL;
 
         $result = $this->connection->fetchAllAssociative($sql, [
-            'date' => $searchInput->date,
+            'date' => $searchInput->date->format('Y-m-d'),
             'keyword' => $searchInput->keyword,
         ]);
 
